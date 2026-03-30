@@ -23,11 +23,11 @@ endif
 
 # ── Plugins directory ─────────────────────────────────────────────────
 PLUGINS_DIR := plugins
-LEGACY_AGENT_OBJ := src$(SEP)agent_random.o src$(SEP)agent_student.o src$(SEP)agent_random_plugin.o
+LEGACY_AGENT_OBJ := src$(SEP)agent_random.o src$(SEP)agent_random_plugin.o
 
 # ── Source sets ──────────────────────────────────────────────────────
 CORE_SRC   := src/game.c src/avl.c
-AGENT_SRC  := src/agents/agent_random.c src/agents/agent_student.c
+AGENT_SRC  := src/agents/agent_random.c
 CLI_SRC    := src/main.c $(CORE_SRC) $(AGENT_SRC) src/agent_loader.c
 HARNESS_SRC:= src/main_harness.c $(CORE_SRC) $(AGENT_SRC) src/tui.c src/agent_loader.c
 
@@ -54,15 +54,18 @@ test_avl$(EXE): $(TEST_AVL_OBJ)
 test_tui$(EXE): $(TEST_TUI_OBJ)
 	$(CC) $(CFLAGS) -o $@ $(TEST_TUI_OBJ) $(LDFLAGS)
 
-# ── Example agent plugin (wraps the built-in random agent)
-agent_plugin: src/agents/agent_random_plugin.c src/agents/agent_random.c $(CORE_SRC) | $(PLUGINS_DIR)
-	$(CC) $(CFLAGS) $(SHFLAGS) -o $(PLUGINS_DIR)$(SEP)agent_random$(SHLIB) src/agents/agent_random_plugin.c src/agents/agent_random.c $(CORE_SRC) $(LDFLAGS)
+# ── Random agent plugin ─────────────────────────────────────────────
+agent_random_plugin: $(PLUGINS_DIR)$(SEP)agent_random$(SHLIB)
+
+$(PLUGINS_DIR)$(SEP)agent_random$(SHLIB): src/agents/agent_random.c src/game.c | $(PLUGINS_DIR)
+	$(CC) $(CFLAGS) $(SHFLAGS) -o $@ src/agents/agent_random.c src/game.c $(LDFLAGS)
 
 # ── Student plugin  (usage: make student_plugin SRC=myagent.c NAME=myname)
 SRC  ?= my_agent.c
 NAME ?= custom
-student_plugin: $(SRC) $(CORE_SRC) | $(PLUGINS_DIR)
-	$(CC) $(CFLAGS) $(SHFLAGS) -o $(PLUGINS_DIR)$(SEP)agent_$(NAME)$(SHLIB) $(SRC) $(CORE_SRC) $(LDFLAGS)
+SRC_PATH := $(if $(wildcard $(SRC)),$(SRC),$(if $(wildcard src/$(SRC)),src/$(SRC),$(if $(wildcard src/agents/$(SRC)),src/agents/$(SRC),$(SRC))))
+student_plugin: $(SRC_PATH) $(CORE_SRC) | $(PLUGINS_DIR)
+	$(CC) $(CFLAGS) $(SHFLAGS) -o $(PLUGINS_DIR)$(SEP)agent_$(NAME)$(SHLIB) $(SRC_PATH) $(CORE_SRC) $(LDFLAGS)
 
 # ── Create plugins directory ─────────────────────────────────────────
 ifeq ($(OS),Windows_NT)
@@ -84,4 +87,4 @@ clean:
 	$(RM_F) ataxx_cli$(EXE) ataxx_harness$(EXE) test_avl$(EXE) test_tui$(EXE)
 	-$(RM_F) $(PLUGINS_DIR)$(SEP)*$(SHLIB)
 
-.PHONY: all clean agent_plugin student_plugin
+.PHONY: all clean agent_random_plugin student_plugin
