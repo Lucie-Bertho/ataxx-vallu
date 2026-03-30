@@ -11,6 +11,8 @@
 *.log
 
 plugins/*
+!plugins/baseline_agent.dll
+!plugins/baseline_agent.so
 !plugins/.gitkeep
 
 .vscode/
