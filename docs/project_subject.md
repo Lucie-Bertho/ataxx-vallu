@@ -19,7 +19,8 @@ Le moteur de jeu, l'arbitre et une baseline sont fournis. Votre travail porte su
 - génération et application des coups
 - impression console pour débogage
 - AVL de référence minimale
-- agent baseline très simple
+- agent aléatoire avec code
+- plugin agent baseline minmax
 
 ## Ce qui est attendu
 
@@ -27,13 +28,6 @@ Le moteur de jeu, l'arbitre et une baseline sont fournis. Votre travail porte su
 2. Un minimax profondeur bornée.
 3. Un alpha-beta correct.
 4. Une intégration justifiée de la structure équilibrée.
-5. Une campagne de test contre plusieurs adversaires.
-6. Une analyse de complexité théorique et observée.
-
-## Jalons recommandés
-
-1. Semaine 1: compilation, lecture du code fourni, premier agent légal.
-2. Semaine 2: AVL comprise, testée et instrumentée.
-3. Semaine 3: minimax profondeur 2 ou 3.
-4. Semaine 4: alpha-beta et ordre des coups.
-5. Semaine 5: évaluation expérimentale et finalisation du rapport.
+5. Toute extention que vous jugez utile
+6. Une campagne de test contre plusieurs adversaires.
+7. Une analyse de complexité théorique et observée.
