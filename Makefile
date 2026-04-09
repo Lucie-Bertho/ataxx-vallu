@@ -96,9 +96,9 @@ endif
 
 # ── Clean ────────────────────────────────────────────────────────────
 clean:
-	del /Q /F $(subst /,\,$(CLI_OBJ) $(HARNESS_OBJ) $(TEST_AVL_OBJ) $(TEST_TUI_OBJ)) 2>nul || true
-	-del /Q /F $(subst /,\,$(LEGACY_AGENT_OBJ)) 2>nul || true
-	del /Q /F *.exe 2>nul || true
-	-del /Q /F $(subst /,\,$(PLUGINS_DIR))\*$(SHLIB) 2>nul || true
+	-$(RM_F) $(subst /,\,$(CLI_OBJ) $(HARNESS_OBJ) $(TEST_AVL_OBJ) $(TEST_TUI_OBJ))
+	-$(RM_F) $(subst /,\,$(LEGACY_AGENT_OBJ))
+	-$(RM_F) *.exe
+	-$(RM_F) $(subst /,\,$(PLUGINS_DIR))\*$(SHLIB)
 
 .PHONY: all clean agent_random_plugin student_plugin
