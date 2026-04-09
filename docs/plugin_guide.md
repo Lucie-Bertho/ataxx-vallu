@@ -31,12 +31,57 @@ Avant de pouvoir compiler quoi que ce soit, vous avez besoin d'un
 **compilateur C** installé sur votre machine. Le projet utilise le standard
 **C99**. Voici les instructions pour les configurations les plus courantes.
 
-### 1.1 Windows — MinGW-w64 (recommandé)
+### 1.1 Windows — MinGW-w64 via MSYS2 (recommandé)
 
-MinGW-w64 fournit un compilateur GCC natif pour Windows. C'est l'option la
-plus simple, et c'est ce qu'attend le Makefile.
+Nous recommandons d'installer GCC via **MSYS2**, car c'est simple à mettre en
+place sous Windows, cela fournit aussi `make`, et l'environnement UCRT64
+convient bien au projet.
 
-#### Option A — Installeur indépendant (le plus simple)
+#### Option A — MSYS2 via winget (recommandé)
+
+1. Depuis **PowerShell** ou l'Invite de commandes, installez MSYS2 :
+
+   ```
+   winget install msys2.msys2
+   ```
+
+   MSYS2 s'installe par défaut dans `C:\msys64`.
+
+2. Toujours dans **PowerShell**, placez-vous dans le dossier du projet et
+   lancez le script de configuration fourni via le shell MSYS2 :
+
+   ```powershell
+   cd C:\chemin\vers\projet
+   C:\msys64\msys2_shell.cmd -ucrt64 -defterm -no-start -here -c "bash tools/setup_msys2.sh"
+   ```
+
+   > **Important :** `C:\msys64\msys2_shell.cmd` lance un shell MSYS2 depuis
+   > PowerShell. Ne tentez **pas** d'exécuter `bash tools/setup_msys2.sh`
+   > directement dans PowerShell — les outils internes de MSYS2 ne sont
+   > disponibles que dans le shell MSYS2.
+
+   Si le terminal se ferme ou demande un redémarrage, réexécutez la même
+   commande.
+
+3. Le script met à jour MSYS2 puis installe le compilateur GCC et `make`.
+   Une fois terminé, vous pouvez compiler votre plugin.
+
+4. Pour la suite (compilation, etc.), vous avez deux options :
+   - **Depuis PowerShell** : le compilateur se trouve dans
+     `C:\msys64\ucrt64\bin`. Ajoutez-le à votre PATH de session :
+     ```powershell
+     $env:PATH = "C:\msys64\ucrt64\bin;" + $env:PATH
+     gcc --version
+     ```
+   - **Depuis le terminal MSYS2 UCRT64** : ouvrez-le via le Menu Démarrer
+     (recherchez « MSYS2 UCRT64 »). GCC et `make` y sont directement
+     disponibles.
+
+> **Astuce :** Si vous utilisez le terminal MSYS2, le chemin de votre projet
+> doit être au format Unix. S'il est sur OneDrive, il ressemblera à
+> `/c/Users/VotreNom/OneDrive/...`.
+
+#### Option B — Installeur indépendant MinGW-w64
 
 1. Téléchargez la dernière version depuis
    <https://github.com/niXman/mingw-builds-binaries/releases>.
@@ -67,18 +112,6 @@ plus simple, et c'est ce qu'attend le Makefile.
    ```
 
    Vous devriez voir quelque chose comme `gcc.exe (MinGW-W64 ...) 13.2.0`.
-
-#### Option B — via MSYS2
-
-1. Téléchargez et installez MSYS2 depuis <https://www.msys2.org>.
-2. Ouvrez le terminal **MSYS2 UCRT64** (pas le terminal MSYS2 classique).
-3. Exécutez : `pacman -S mingw-w64-ucrt-x86_64-gcc make`
-4. Le compilateur est maintenant disponible dans ce terminal.
-5. Naviguez vers votre dossier de projet et compilez depuis là.
-
-> **Astuce :** Si vous utilisez MSYS2, le chemin de votre projet doit être
-> accessible. S'il est sur OneDrive, le chemin ressemblera à
-> `/c/Users/VotreNom/OneDrive/...` dans le shell MSYS2.
 
 #### Option C — via Code::Blocks (voir section 1.3 ci-dessous)
 
