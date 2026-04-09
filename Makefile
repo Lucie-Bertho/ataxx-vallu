@@ -11,7 +11,21 @@ ifeq ($(OS),Windows_NT)
   DL_LIBS :=
   RM_F    := cmd /C del /Q /F
   SEP     := \\
+else ifeq ($(MSYSTEM),MINGW64)
+  EXE     := .exe
+  SHLIB   := .dll
+  SHFLAGS := -shared
+  DL_LIBS :=
+  RM_F    := cmd /C del /Q /F
+  SEP     := \
 
+else ifeq ($(MSYSTEM),UCRT64)
+  EXE     := .exe
+  SHLIB   := .dll
+  SHFLAGS := -shared
+  DL_LIBS :=
+  RM_F    := cmd /C del /Q /F
+  SEP     := \
 else
   EXE     :=
   SHLIB   := .so
