@@ -16,7 +16,7 @@ else ifeq ($(MSYSTEM),MINGW64)
   SHLIB   := .dll
   SHFLAGS := -shared
   DL_LIBS :=
-  RM_F    := cmd /C del /Q /F
+  RM_F    := rm -f
   SEP     := \
 
 else ifeq ($(MSYSTEM),UCRT64)
@@ -24,7 +24,7 @@ else ifeq ($(MSYSTEM),UCRT64)
   SHLIB   := .dll
   SHFLAGS := -shared
   DL_LIBS :=
-  RM_F    := cmd /C del /Q /F
+  RM_F    := rm -f
   SEP     := \
 else
   EXE     :=
@@ -96,9 +96,9 @@ endif
 
 # ── Clean ────────────────────────────────────────────────────────────
 clean:
-	$(RM_F) $(subst /,$(SEP),$(CLI_OBJ) $(HARNESS_OBJ) $(TEST_AVL_OBJ) $(TEST_TUI_OBJ))
-	-$(RM_F) $(LEGACY_AGENT_OBJ)
-	$(RM_F) ataxx_cli$(EXE) ataxx_harness$(EXE) test_avl$(EXE) test_tui$(EXE)
-	-$(RM_F) $(PLUGINS_DIR)$(SEP)*$(SHLIB)
+	rm -f $(CLI_OBJ) $(HARNESS_OBJ) $(TEST_AVL_OBJ) $(TEST_TUI_OBJ)
+	-rm -f $(LEGACY_AGENT_OBJ)
+	rm -f ataxx_cli$(EXE) ataxx_harness$(EXE) test_avl$(EXE) test_tui$(EXE)
+	-rm -f $(PLUGINS_DIR)/*$(SHLIB)
 
 .PHONY: all clean agent_random_plugin student_plugin
