@@ -2,13 +2,15 @@
 #include "game.h"
 #include "avl.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 
 // Constantes
-#define MAX_MOVES  ATAXX_MAX_MOVES
-#define INF        1000000
+#define MAX_MOVES ATAXX_MAX_MOVES
+#define INF 1000000
+#define HISTORY_SIZE 200
 
 // Table de transposition (AVL)
 static int tt_encode(int score, int depth) {
@@ -49,9 +51,57 @@ static void tt_store(uint64_t hash, int depth, int score) {
     avl_insert(&g_tt, hash, tt_encode(score, depth));
 }
 
+// Compte le nombre de cases vides adjacentes à mes pions
+static int count_reachable_empty(const GameState *state, Player me)
+{
+    int count = 0;
+    int size  = state->board_size;
+
+    for (int r = 0; r < size; r++) {
+        for (int c = 0; c < size; c++) {
+            if (state->board[r][c] != PLAYER_NONE) continue;
+
+            /* cette case vide est-elle adjacente (distance 1) à un de mes pions ? */
+            for (int dr = -1; dr <= 1; dr++) {
+                for (int dc = -1; dc <= 1; dc++) {
+                    if (dr == 0 && dc == 0) continue;
+                    int nr = r + dr, nc = c + dc;
+                    if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+                    if (state->board[nr][nc] == me) { count++; goto next_cell; }
+                }
+            }
+            next_cell:;
+        }
+    }
+    return count;
+}
+
 // Fonction d'évaluation
+/*
+ * Critère 1 : différence de pions (poids 10)
+ *   Dans Ataxx, le gagnant est celui qui a le plus de pions en fin de
+ *   partie. Maximiser la différence de pions est donc l'objectif direct.
+ *   Poids 10 pour que ce critère domine les autres.
+ *
+ * Critère 2 : différence de mobilité (poids 1)
+ *   Un joueur avec plus de coups disponibles contrôle mieux le plateau
+ *   et peut forcer l'adversaire à se déplacer loin (coup saut = pas de
+ *   conversion). Poids faible (1) car la mobilité est volatile : elle
+ *   change beaucoup d'un tour à l'autre et ne prédit pas fiablement
+ *   le résultat final.
+ *
+ * Critère 3 : cases vides adjacentes à mes pions (poids 3)
+ *   On compte les cases vides que je peux atteindre en un coup clone
+ *   (distance 1). Plus j'en ai, plus je contrôle l'expansion future.
+ *   Cela pousse l'agent à remplir les cases vides tôt plutôt que
+ *   de se retrouver bloqué avec des îlots inaccessibles.
+ * 
+ * Position terminale : ±INF pour guider la recherche vers les victoires
+ * et loin des défaites, quelle que soit la profondeur restante.
+ */
 static int evaluate(const GameState *state, Player me)
 {
+    // Terminaison
     if (game_is_terminal(state)) {
         int s_me = game_score(state, me);
         int s_opp = game_score(state, 1 - me);
@@ -60,8 +110,10 @@ static int evaluate(const GameState *state, Player me)
         return 0;
     }
 
+    // Différence de pions
     int piece_diff = game_score(state, me) - game_score(state, 1 - me);
 
+    // Différence de mobilité
     Move tmp[MAX_MOVES];
     int  my_moves, opp_moves;
 
@@ -79,7 +131,12 @@ static int evaluate(const GameState *state, Player me)
 
     int mobility_diff = my_moves - opp_moves;
 
-    return 10 * piece_diff + 1 * mobility_diff;
+    // Nombre de cases vides accessibles
+    int reachable_diff = count_reachable_empty(state, me)
+                   - count_reachable_empty(state, 1 - me);
+
+    // poids 10 pour la différence de pions, 1 pour la mobilité, 3 pour les cases accessibles
+    return 10 * piece_diff + 1 * mobility_diff + 3 * reachable_diff;
 }
 
 // Alpha Beta
@@ -132,12 +189,28 @@ static int alpha_beta(const GameState *state,
     return best;
 }
 
+// Historique des positions de la partie
+static uint64_t g_history[HISTORY_SIZE];
+
+static void history_record(const GameState *state) {
+    int t = state->turn_count;
+    if (t >= 0 && t < HISTORY_SIZE)
+        g_history[t] = game_hash(state);
+}
+
+static bool history_seen(uint64_t hash, int current_turn) {
+    for (int i = 0; i < current_turn && i < HISTORY_SIZE; i++)
+        if (g_history[i] == hash) return true;
+    return false;
+}
+
 // Point d'entrée
 Move agent_choose_move(const GameState *state, AgentContext *context)
 {
     int depth = (context && context->depth_limit > 0)
-                ? context->depth_limit
-                : 4;
+                ? context->depth_limit : 4;
+
+    history_record(state);
 
     tt_clear();
 
@@ -153,11 +226,32 @@ Move agent_choose_move(const GameState *state, AgentContext *context)
     Move best_move = moves[0];
     int best_score = -INF;
 
+    // Détecte si on est dans un cycle depuis N tours
+    bool in_cycle = false;
+    if (state->turn_count >= 4) {
+        uint64_t cur = game_hash(state);
+        int t = state->turn_count;
+        if (t - 2 >= 0 && t - 2 < HISTORY_SIZE && g_history[t - 2] == cur)
+            in_cycle = true;
+        if (t - 4 >= 0 && t - 4 < HISTORY_SIZE && g_history[t - 4] == cur)
+            in_cycle = true;
+    }
+
     for (int i = 0; i < count; i++) {
         GameState child = *state;
         game_apply_move(&child, moves[i]);
 
         int score = -alpha_beta(&child, depth - 1, -INF, INF, me);
+
+        // Pénalité pour les positions déjà vues dans l'historique récent
+        if (history_seen(game_hash(&child), state->turn_count))
+            score -= 5000;
+
+        // Bonus pour les coups sauts (pour casser les cycles)
+        if (in_cycle && moves[i].from_row != moves[i].to_row
+                     && moves[i].from_col != moves[i].to_col) {
+            score += 300;
+        }
 
         if (score > best_score) {
             best_score = score;
