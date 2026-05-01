@@ -26,11 +26,21 @@ static int tt_decode_depth(int packed) {
     return packed & 0xFF;
 }
 
-static AvlTree g_tt;
+// Constante de taille maximale
+#define TT_MAX_NODES (1 << 20)   // 1 048 576 nœuds × 32 octets = 32 Mo
 
-static void tt_clear(void) {
-    avl_destroy(&g_tt);
-    avl_init(&g_tt);
+static AvlTree g_tt;
+static int     g_tt_size = 0;   // nombre de nœuds actuellement stockés
+
+// Suppression de tt_clear() — la table est maintenant persistante.
+// On l'initialise une seule fois au premier appel.
+static bool g_tt_initialized = false;
+
+static void tt_init_once(void) {
+    if (!g_tt_initialized) {
+        avl_init(&g_tt);
+        g_tt_initialized = true;
+    }
 }
 
 static bool tt_lookup(uint64_t hash, int depth_needed, int *score_out) {
@@ -46,12 +56,21 @@ static bool tt_lookup(uint64_t hash, int depth_needed, int *score_out) {
 static void tt_store(uint64_t hash, int depth, int score) {
     int existing;
     if (avl_find(&g_tt, hash, &existing)) {
-        if (tt_decode_depth(existing) > depth)
+        // Nœud existant : mise à jour en place si la profondeur est meilleure.
+        // Pas de nouveau nœud alloué, g_tt_size reste inchangé.
+        if (tt_decode_depth(existing) >= depth)
             return;
+        avl_insert(&g_tt, hash, tt_encode(score, depth)); // écrase
+        return;
     }
-    avl_insert(&g_tt, hash, tt_encode(score, depth));
-}
 
+    // Nouveau nœud : on vérifie le budget mémoire
+    if (g_tt_size >= TT_MAX_NODES)
+        return;  // table pleine, on ignore
+
+    avl_insert(&g_tt, hash, tt_encode(score, depth));
+    g_tt_size++;
+}
 // Compte le nombre de cases vides adjacentes à mes pions
 static int count_reachable_empty(const GameState *state, Player me)
 {
@@ -260,7 +279,7 @@ Move agent_choose_move(const GameState *state, AgentContext *context)
 
     history_record(state);
 
-    tt_clear();
+    tt_init_once();
 
     Move moves[MAX_MOVES];
     int  count = game_generate_moves(state, moves, MAX_MOVES);

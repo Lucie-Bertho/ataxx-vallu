@@ -76,52 +76,7 @@ static int count_reachable_empty(const GameState *state, Player me)
     }
     return count;
 }
-// Compte les pions adverses adjacents à (row, col).
-// Ce sont exactement les pions qui seront convertis par un coup en (row, col).
-static int count_captures(const GameState *state, int row, int col, Player me)
-{
-    int captures = 0;
-    int size = state->board_size;
-    for (int dr = -1; dr <= 1; dr++) {
-        for (int dc = -1; dc <= 1; dc++) {
-            if (dr == 0 && dc == 0) continue;
-            int nr = row + dr, nc = col + dc;
-            if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
-            if (state->board[nr][nc] == (1 - me)) captures++;
-        }
-    }
-    return captures;
-}
 
-// Heuristique d'un coup pour le tri calculé en temps constant (plus grand = exploré en premier).
-static int move_score(const GameState *state, const Move *m, Player me)
-{
-    if (m->is_pass) return -1;
-
-    int captures = count_captures(state, m->to_row, m->to_col, me);
-
-    int dr = abs(m->to_row - m->from_row);
-    int dc = abs(m->to_col - m->from_col);
-    int is_clone = (dr <= 1 && dc <= 1) ? 1 : 0;
-
-    return captures * 10 + is_clone;
-}
-
-// Tri par insertion qui est assez efficace pour b ≈ 40 coups
-static void sort_moves(const GameState *state,
-                       Move *moves, int count, Player me)
-{
-    for (int i = 1; i < count; i++) {
-        Move key   = moves[i];
-        int  s_key = move_score(state, &key, me);
-        int  j     = i - 1;
-        while (j >= 0 && move_score(state, &moves[j], me) < s_key) {
-            moves[j + 1] = moves[j];
-            j--;
-        }
-        moves[j + 1] = key;
-    }
-}
 // Fonction d'évaluation
 /*
  * Critère 1 : différence de pions (poids 10)
@@ -219,8 +174,6 @@ static int alpha_beta(const GameState *state,
     }
 
     int best = -INF;
-
-    sort_moves(state, moves, count, me);
 
     for (int i = 0; i < count; i++) {
         GameState child = *state;
